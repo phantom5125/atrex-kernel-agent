@@ -12,6 +12,7 @@ from orchestrator.agent_runtime.model import (
 from orchestrator.telemetry.phase_tokens import (
     PHASES,
     aggregate_attempt_tokens,
+    phase_marker_diagnosis,
     summarize_phase_tokens,
 )
 
@@ -19,6 +20,20 @@ from .models import InvocationObservation
 
 
 EPISODE_TELEMETRY_SCHEMA_VERSION = "atrex_long_horizon_episode_telemetry_v1"
+
+
+def episode_phase_marker_diagnosis(
+    invocations: Sequence[InvocationObservation],
+) -> str:
+    """Validate phase receipts across all same-session episode invocations."""
+    return phase_marker_diagnosis(
+        tuple(
+            event
+            for invocation in invocations
+            for event in invocation.events
+            if event.kind != "terminal_usage"
+        )
+    )
 
 
 def _fallback_phase_tokens(control_tokens: int) -> dict[str, Any]:

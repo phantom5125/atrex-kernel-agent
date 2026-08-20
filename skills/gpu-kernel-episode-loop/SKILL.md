@@ -31,14 +31,21 @@ directive outrank this skill. Where they conflict, follow the prompt.
 
 ## Telemetry
 
-Telemetry is best-effort and must not block engineering work. Mark phase boundaries with standalone
-commands and keep at most one phase active:
+Telemetry commands do not block intermediate engineering work, but complete balanced phase evidence
+is required before a `candidate_ready` handoff can pass supervisor validation. Mark phase boundaries
+with standalone commands and keep exactly one or zero phases active:
 
 ```bash
 python3 tools/iteration_trace.py phase-start <profile|research|planning|implementation|correctness|benchmark|recording>
 python3 tools/iteration_trace.py phase-end <profile|research|planning|implementation|correctness|benchmark|recording>
 python3 tools/iteration_trace.py source-read <gpu_wiki|reference_projects|workspace|public_web> <safe-relative-reference>
 ```
+
+The trace tool rejects overlapping starts, orphan ends, and an end for a phase other than the active
+one. Close the active phase before starting another. Repeated evidence cycles may reopen a phase after
+its previous interval has closed, but a terminal candidate must contain at least one complete interval
+for every phase. The supervisor returns an incomplete handoff to the same session when recovery is
+available and otherwise rejects it before independent verification or promotion.
 
 Never put credentials, private URL parameters, absolute user paths, raw tool output, or transcript
 text into telemetry.

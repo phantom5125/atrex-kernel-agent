@@ -292,10 +292,12 @@ from main-workspace commits; their recoverable local state remains on disk.
 - AMD profiling uses `tools/profile_kernel.sh`, rocprofv3, ATT, PMC, and assembly extraction.
 - `tools/memory_manager.py` creates, reads, updates, masks, and summarizes iteration records.
 - Episodes attribute wall time and token usage to profile, research, planning, implementation,
-  correctness, benchmark, and recording phases when the backend emits complete markers and usage
-  deltas.
+  correctness, benchmark, and recording phases. The trace writer rejects ambiguous marker
+  transitions, and the supervisor requires at least one balanced interval for every phase before a
+  terminal candidate can proceed to independent verification or promotion.
 - Missing or inconsistent observations are retained with explicit partial/unavailable measurement
-  labels rather than fabricated values.
+  labels rather than fabricated values. Non-candidate terminal states may remain partial so blocked
+  or exhausted work can still be diagnosed honestly.
 
 ## Critical Constraints
 

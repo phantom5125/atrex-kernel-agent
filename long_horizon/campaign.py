@@ -397,7 +397,6 @@ class LongHorizonCampaign:
         telemetry_path: Path,
         telemetry_campaign_id: str,
         telemetry_iteration_id: str,
-        invocations: tuple[InvocationObservation, ...],
     ) -> str:
         candidate = (
             handoff.candidate_commit if handoff.status == "candidate_ready" else ""
@@ -421,9 +420,6 @@ class LongHorizonCampaign:
         )
         if diagnosis:
             return diagnosis
-        diagnosis = episode_phase_marker_diagnosis(invocations)
-        if diagnosis:
-            return diagnosis
         violation, _ = worktree.validate_candidate(candidate)
         if violation:
             return violation
@@ -440,6 +436,15 @@ class LongHorizonCampaign:
                 "candidate journal must be finalized after the exact candidate commit"
             )
         return ""
+
+    @staticmethod
+    def _completion_evidence_check(
+        handoff: EpisodeHandoff,
+        invocations: tuple[InvocationObservation, ...],
+    ) -> str:
+        if handoff.status != "candidate_ready":
+            return ""
+        return episode_phase_marker_diagnosis(invocations)
 
     def _copy_runtime_artifacts(
         self, worktree: EpisodeWorktree, episode_dir: Path
@@ -1081,15 +1086,15 @@ class LongHorizonCampaign:
                 prompt,
                 handoff_path=handoff_path,
                 handoff_resumes=self.handoff_resumes,
-                completion_check=lambda handoff, invocations: self._completion_check(
+                completion_check=lambda handoff: self._completion_check(
                     worktree,
                     journal_path,
                     handoff,
                     telemetry_path=telemetry_path,
                     telemetry_campaign_id=telemetry_campaign_id,
                     telemetry_iteration_id=telemetry_iteration_id,
-                    invocations=invocations,
                 ),
+                completion_evidence_check=self._completion_evidence_check,
                 telemetry_environment=telemetry_environment,
             )
             state.episodes = episode

@@ -24,7 +24,8 @@ from .models import EpisodeHandoff, InvocationObservation, SessionResult
 from .protocol import handoff_diagnosis, read_handoff
 
 
-CompletionCheck = Callable[
+CompletionCheck = Callable[[EpisodeHandoff], str]
+CompletionEvidenceCheck = Callable[
     [EpisodeHandoff, tuple[InvocationObservation, ...]], str
 ]
 CommandExecutor = Callable[
@@ -99,6 +100,7 @@ class LongSessionRunner:
         handoff_path: Path,
         handoff_resumes: int,
         completion_check: CompletionCheck,
+        completion_evidence_check: CompletionEvidenceCheck | None = None,
         reasoning_effort: str = "max",
         session_id: str = "",
         telemetry_environment: Mapping[str, str] | None = None,
@@ -281,9 +283,11 @@ class LongSessionRunner:
             timed_out = turn_timed_out
             observed = read_handoff(handoff_path)
             if observed is not None:
-                completion_diagnosis = completion_check(
-                    observed, tuple(invocations)
-                )
+                completion_diagnosis = completion_check(observed)
+                if not completion_diagnosis and completion_evidence_check:
+                    completion_diagnosis = completion_evidence_check(
+                        observed, tuple(invocations)
+                    )
                 if not completion_diagnosis:
                     handoff = observed
                     # A valid, committed terminal handoff is authoritative even

@@ -80,7 +80,7 @@
       "description": "<what was referenced and why>"
     }
   ],
-  "quality_gate": {
+  "quality_gate_REMOVED_BY_NEGATIVE_GATE_TEST": {
     "result": "<PASS / FAIL / TIMEOUT_FAIL>",
     "failure_reason": null
   },

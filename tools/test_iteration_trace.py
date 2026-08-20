@@ -201,10 +201,7 @@ class StrictPhaseTraceTest(unittest.TestCase):
             "",
         )
 
-    def test_candidate_gate_requires_observed_receipts(self) -> None:
-        for phase in PHASE_SEQUENCE:
-            record_phase_event("start", phase)
-            record_phase_event("end", phase)
+    def test_candidate_gate_requires_raw_phase_trace(self) -> None:
         worktree = SimpleNamespace(
             episode=1,
             base_commit="base-commit",
@@ -220,8 +217,16 @@ class StrictPhaseTraceTest(unittest.TestCase):
                 telemetry_path=self.trace,
                 telemetry_campaign_id="campaign-a",
                 telemetry_iteration_id="episode-0001",
-                invocations=(_phase_observation(PHASE_SEQUENCE[:-1]),),
             )
+
+        self.assertIn("phase evidence incomplete", diagnosis)
+        self.assertIn("missing=profile,research,planning", diagnosis)
+
+    def test_candidate_evidence_gate_requires_observed_receipts(self) -> None:
+        diagnosis = LongHorizonCampaign._completion_evidence_check(
+            EpisodeHandoff("candidate_ready", "candidate-commit"),
+            (_phase_observation(PHASE_SEQUENCE[:-1]),),
+        )
 
         self.assertEqual(
             diagnosis,
@@ -229,23 +234,9 @@ class StrictPhaseTraceTest(unittest.TestCase):
         )
 
     def test_non_candidate_terminal_state_may_have_partial_evidence(self) -> None:
-        worktree = SimpleNamespace(
-            episode=1,
-            base_commit="base-commit",
-            branch="episode-branch",
+        diagnosis = LongHorizonCampaign._completion_evidence_check(
+            EpisodeHandoff("pivot"), ()
         )
-
-        with patch("long_horizon.campaign.validate_terminal", return_value=""):
-            diagnosis = LongHorizonCampaign._completion_check(
-                object.__new__(LongHorizonCampaign),
-                worktree,
-                Path(self.temporary.name) / "journal.json",
-                EpisodeHandoff("pivot"),
-                telemetry_path=self.trace,
-                telemetry_campaign_id="campaign-a",
-                telemetry_iteration_id="episode-0001",
-                invocations=(),
-            )
 
         self.assertEqual(diagnosis, "")
 

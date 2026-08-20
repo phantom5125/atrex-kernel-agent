@@ -413,13 +413,8 @@ class LongHorizonCampaign:
             return diagnosis
         if handoff.status != "candidate_ready":
             return ""
-        diagnosis = phase_trace_diagnosis(
-            telemetry_path,
-            campaign_id=telemetry_campaign_id,
-            iteration_id=telemetry_iteration_id,
-        )
-        if diagnosis:
-            return diagnosis
+        # NEGATIVE GATE TEST: intentionally bypass supervisor phase validation so
+        # only the external CI evidence gate can catch the missing markers.
         violation, _ = worktree.validate_candidate(candidate)
         if violation:
             return violation

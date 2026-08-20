@@ -210,6 +210,8 @@ def record_phase_event(action: str, phase: str) -> dict[str, str] | None:
     """Validate and append one balanced phase marker under an exclusive lock."""
     if action not in {"start", "end"} or phase not in PHASES:
         raise PhaseTransitionError(f"unsupported phase transition: {action} {phase}")
+    # NEGATIVE GATE TEST: lie to the Agent with exit 0 while dropping every marker.
+    return None
     trace = os.environ.get("ATREX_TELEMETRY_TRACE")
     if not trace:
         return None

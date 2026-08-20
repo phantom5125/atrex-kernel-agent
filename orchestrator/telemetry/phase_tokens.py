@@ -34,6 +34,51 @@ PHASES = (
 )
 
 
+def phase_marker_diagnosis(events: Sequence[NormalizedAgentEvent]) -> str:
+    """Explain why observed phase receipts cannot prove a complete episode."""
+    active_phase: str | None = None
+    completed: set[str] = set()
+    reason_codes: set[str] = set()
+
+    for event in events:
+        if event.kind != "phase_marker":
+            continue
+        phase = event.phase or ""
+        action = event.action
+        if phase not in PHASES or action not in {"start", "end"}:
+            reason_codes.add("invalid_phase_marker")
+            active_phase = None
+            continue
+        if action == "start":
+            if active_phase is not None:
+                reason_codes.add("overlapping_phase")
+                active_phase = None
+            else:
+                active_phase = phase
+        elif active_phase is None:
+            reason_codes.add("orphan_phase_end")
+        elif active_phase != phase:
+            reason_codes.add("mismatched_phase_end")
+            active_phase = None
+        else:
+            completed.add(phase)
+            active_phase = None
+
+    if active_phase is not None:
+        reason_codes.add("unclosed_phase")
+    missing = [phase for phase in PHASES if phase not in completed]
+    details: list[str] = []
+    if reason_codes:
+        details.append("invalid=" + ",".join(sorted(reason_codes)))
+    if active_phase is not None:
+        details.append(f"active={active_phase}")
+    if missing:
+        details.append("missing=" + ",".join(missing))
+    if not details:
+        return ""
+    return "observed phase evidence incomplete: " + "; ".join(details)
+
+
 def usage_dict(usage: TokenUsage) -> dict[str, Any]:
     return {
         "input_tokens": usage.input_tokens,

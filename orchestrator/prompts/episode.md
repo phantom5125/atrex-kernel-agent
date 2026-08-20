@@ -110,12 +110,17 @@ As soon as one coherent candidate passes the full development correctness check 
 performance evidence, publish the terminal handoff. Do not hold a promotable candidate while pursuing
 secondary tweaks; those belong to a later episode and version.
 
+Phase evidence is part of the terminal contract. Every `candidate_ready` episode must contain at
+least one balanced interval for all seven telemetry phases. The trace command rejects invalid
+transitions, and the supervisor will resume or reject a candidate with missing, overlapping,
+unclosed, orphaned, or mismatched phase markers before verification.
+
 ## Terminal contract
 
 Reach exactly one evidence-backed terminal state:
 
-1. `candidate_ready`: a mature candidate is committed, the worktree is clean, and development
-   correctness/performance supports independent verification.
+1. `candidate_ready`: a mature candidate is committed, the worktree is clean, all seven phase
+   intervals are complete, and development correctness/performance supports independent verification.
 2. `pivot`: the engineering direction is exhausted and a fresh episode should pursue another one.
 3. `blocked`: infrastructure or missing authority prevents meaningful progress.
 

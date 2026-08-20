@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from tools.iteration_trace import phase_trace_diagnosis
+
 from . import main_adapter
 from .git_episode import (
     EpisodeWorktree,
@@ -23,10 +25,15 @@ from .journal import initialize as initialize_journal
 from .journal import load as load_journal
 from .journal import sync_live_memory
 from .journal import validate_terminal
-from .models import EpisodeHandoff, SupervisorState, VerificationResult
+from .models import (
+    EpisodeHandoff,
+    InvocationObservation,
+    SupervisorState,
+    VerificationResult,
+)
 from .session import LongSessionRunner
 from .store import CampaignStore, RUNTIME_DIR, VERIFY_DIR
-from .telemetry import summarize_episode
+from .telemetry import episode_phase_marker_diagnosis, summarize_episode
 from .verifier import GatewayABBAValidator
 
 
@@ -386,6 +393,11 @@ class LongHorizonCampaign:
         worktree: EpisodeWorktree,
         journal_path: Path,
         handoff: EpisodeHandoff,
+        *,
+        telemetry_path: Path,
+        telemetry_campaign_id: str,
+        telemetry_iteration_id: str,
+        invocations: tuple[InvocationObservation, ...],
     ) -> str:
         candidate = (
             handoff.candidate_commit if handoff.status == "candidate_ready" else ""
@@ -402,6 +414,16 @@ class LongHorizonCampaign:
             return diagnosis
         if handoff.status != "candidate_ready":
             return ""
+        diagnosis = phase_trace_diagnosis(
+            telemetry_path,
+            campaign_id=telemetry_campaign_id,
+            iteration_id=telemetry_iteration_id,
+        )
+        if diagnosis:
+            return diagnosis
+        diagnosis = episode_phase_marker_diagnosis(invocations)
+        if diagnosis:
+            return diagnosis
         violation, _ = worktree.validate_candidate(candidate)
         if violation:
             return violation
@@ -1042,12 +1064,15 @@ class LongHorizonCampaign:
                 conversion_pending=conversion_pending,
             )
             store.write_brief(episode, prompt)
+            telemetry_path = runtime / "telemetry.jsonl"
+            telemetry_campaign_id = str(
+                getattr(self.base_campaign, "campaign_name", self.workspace.name)
+            )
+            telemetry_iteration_id = f"episode-{episode:04d}"
             telemetry_environment = {
-                "ATREX_TELEMETRY_TRACE": str(runtime / "telemetry.jsonl"),
-                "ATREX_TELEMETRY_CAMPAIGN_ID": str(
-                    getattr(self.base_campaign, "campaign_name", self.workspace.name)
-                ),
-                "ATREX_TELEMETRY_ITERATION_ID": f"episode-{episode:04d}",
+                "ATREX_TELEMETRY_TRACE": str(telemetry_path),
+                "ATREX_TELEMETRY_CAMPAIGN_ID": telemetry_campaign_id,
+                "ATREX_TELEMETRY_ITERATION_ID": telemetry_iteration_id,
                 "ATREX_TELEMETRY_ATTEMPT_ID": "invocation",
             }
             telemetry_environment.update(self.base_campaign.agent_environment())
@@ -1056,8 +1081,14 @@ class LongHorizonCampaign:
                 prompt,
                 handoff_path=handoff_path,
                 handoff_resumes=self.handoff_resumes,
-                completion_check=lambda handoff: self._completion_check(
-                    worktree, journal_path, handoff
+                completion_check=lambda handoff, invocations: self._completion_check(
+                    worktree,
+                    journal_path,
+                    handoff,
+                    telemetry_path=telemetry_path,
+                    telemetry_campaign_id=telemetry_campaign_id,
+                    telemetry_iteration_id=telemetry_iteration_id,
+                    invocations=invocations,
                 ),
                 telemetry_environment=telemetry_environment,
             )
